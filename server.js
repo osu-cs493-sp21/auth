@@ -12,6 +12,8 @@ app.use(logger);
 
 app.use('/', apiRouter);
 
+// app.use('*', (err, req, res, next) => {});
+
 app.use('*', (req, res, next) => {
   res.status(404).send({
     err: "The path " + req.originalUrl + " doesn't exist"

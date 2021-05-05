@@ -5,7 +5,13 @@
 const router = require('express').Router();
 
 const { validateAgainstSchema } = require('../lib/validation');
-const { UserSchema, insertNewUser, getUserById } = require('../models/user');
+const { generateAuthToken, requireAuthentication } = require('../lib/auth');
+const {
+  UserSchema,
+  insertNewUser,
+  getUserById,
+  validateUser
+} = require('../models/user');
 
 router.post('/', async (req, res) => {
   if (validateAgainstSchema(req.body, UserSchema)) {
@@ -27,19 +33,51 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
-  try {
-    const user = await getUserById(req.params.id);
-    if (user) {
-      res.status(200).send(user);
-    } else {
-      next();
+router.post('/login', async (req, res) => {
+  if (req.body && req.body.id && req.body.password) {
+    try {
+      const authenticated = await validateUser(req.body.id, req.body.password);
+      if (authenticated) {
+        res.status(200).send({
+          token: generateAuthToken(req.body.id)
+        });
+      } else {
+        res.status(401).send({
+          error: "Invalid authentication credentials."
+        });
+      }
+    } catch (err) {
+      console.error("  -- error:", err);
+      res.status(500).send({
+        error: "Error logging in.  Try again later."
+      });
     }
-  } catch (err) {
-    console.error("  -- Error:", err);
-    res.status(500).send({
-      error: "Error fetching user.  Try again later."
+  } else {
+    res.status(400).send({
+      error: "Request body needs `id` and `password`."
     });
+  }
+});
+
+router.get('/:id', requireAuthentication, async (req, res, next) => {
+  if (req.user !== req.params.id) {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource"
+    });
+  } else {
+    try {
+      const user = await getUserById(req.params.id);
+      if (user) {
+        res.status(200).send(user);
+      } else {
+        next();
+      }
+    } catch (err) {
+      console.error("  -- Error:", err);
+      res.status(500).send({
+        error: "Error fetching user.  Try again later."
+      });
+    }
   }
 });
 

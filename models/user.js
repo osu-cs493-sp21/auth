@@ -18,7 +18,6 @@ const UserSchema = {
 };
 exports.UserSchema = UserSchema;
 
-
 /*
  * Insert a new User into the DB.
  */
@@ -37,7 +36,7 @@ exports.insertNewUser = async function (user) {
 /*
  * Fetch a user from the DB based on user ID.
  */
-exports.getUserById = async function (id, includePassword) {
+async function getUserById (id, includePassword) {
   const db = getDBReference();
   const collection = db.collection('users');
   if (!ObjectId.isValid(id)) {
@@ -51,3 +50,9 @@ exports.getUserById = async function (id, includePassword) {
     return results[0];
   }
 };
+exports.getUserById = getUserById;
+
+exports.validateUser = async function (id, password) {
+  const user = await getUserById(id, true);
+  return user && await bcrypt.compare(password, user.password);
+}
